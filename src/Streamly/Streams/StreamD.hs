@@ -137,7 +137,9 @@ module Streamly.Streams.StreamD
     , concatMap
     , ConcatMapUState (..)
     , concatMapU
+    , AppendState
     , append
+    , InterleaveState(..)
     , interleave
     , interleaveMin
     , interleaveFst

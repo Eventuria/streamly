@@ -38,8 +38,8 @@ import qualified Data.Foldable as F
 import qualified GHC.Exts as GHC
 
 #ifdef INSPECTION
-import Streamly.Streams.StreamD.Type (Step(..), InterleaveState(..),
-    AppendState(..))
+import Streamly.Streams.StreamD.Type (Step(..))
+import Streamly.Streams.StreamD (InterleaveState(..), AppendState(..))
 import Test.Inspection
 #endif
 
