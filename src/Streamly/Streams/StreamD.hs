@@ -137,6 +137,11 @@ module Streamly.Streams.StreamD
     , concatMap
     , ConcatMapUState (..)
     , concatMapU
+    , append
+    , interleave
+    , interleaveMin
+    , interleaveFst
+    , roundRobin -- interleaveFair?/ParallelFair
 
     -- ** Grouping
     , groupsOf
@@ -1733,6 +1738,173 @@ concatMapU (Unfold istep inject) (Stream ostep ost) =
             Yield x i' -> Yield x (ConcatMapUInner o i')
             Skip i'    -> Skip (ConcatMapUInner o i')
             Stop       -> Skip (ConcatMapUOuter o)
+
+data AppendState s1 s2 = AppendFirst s1 | AppendSecond s2
+
+-- Note that this could be much faster compared to the CPS stream. However, as
+-- the number of streams being composed increases this may become expensive.
+-- Need to see where the breaking point is between the two.
+--
+{-# INLINE_NORMAL append #-}
+append :: Monad m => Stream m a -> Stream m a -> Stream m a
+append (Stream step1 state1) (Stream step2 state2) =
+    Stream step (AppendFirst state1)
+
+    where
+
+    -- XXX yield thru a single state? inspection testing
+    {-# INLINE_LATE step #-}
+    step gst (AppendFirst st) = do
+        r <- step1 gst st
+        return $ case r of
+            Yield a s -> Yield a (AppendFirst s)
+            Skip s -> Skip (AppendFirst s)
+            Stop -> Skip (AppendSecond state2)
+
+    step gst (AppendSecond st) = do
+        r <- step2 gst st
+        return $ case r of
+            Yield a s -> Yield a (AppendSecond s)
+            Skip s -> Skip (AppendSecond s)
+            Stop -> Stop
+
+-- Note that the StreamK version switches to another stream only after the
+-- first stream yields something.
+--
+data InterleaveState s1 s2 = InterleaveFirst s1 s2 | InterleaveSecond s1 s2
+    | InterleaveSecondOnly s2 | InterleaveFirstOnly s1
+
+{-# INLINE_NORMAL interleave #-}
+interleave :: Monad m => Stream m a -> Stream m a -> Stream m a
+interleave (Stream step1 state1) (Stream step2 state2) =
+    Stream step (InterleaveFirst state1 state2)
+
+    where
+
+    -- XXX yield thru a single state? inspection testing
+    {-# INLINE_LATE step #-}
+    step gst (InterleaveFirst st1 st2) = do
+        r <- step1 gst st1
+        return $ case r of
+            Yield a s -> Yield a (InterleaveSecond s st2)
+            Skip s -> Skip (InterleaveFirst s st2)
+            Stop -> Skip (InterleaveSecondOnly st2)
+
+    step gst (InterleaveSecond st1 st2) = do
+        r <- step2 gst st2
+        return $ case r of
+            Yield a s -> Yield a (InterleaveFirst st1 s)
+            Skip s -> Skip (InterleaveSecond st1 s)
+            Stop -> Skip (InterleaveFirstOnly st1)
+
+    step gst (InterleaveFirstOnly st1) = do
+        r <- step1 gst st1
+        return $ case r of
+            Yield a s -> Yield a (InterleaveFirstOnly s)
+            Skip s -> Skip (InterleaveFirstOnly s)
+            Stop -> Stop
+
+    step gst (InterleaveSecondOnly st2) = do
+        r <- step2 gst st2
+        return $ case r of
+            Yield a s -> Yield a (InterleaveSecondOnly s)
+            Skip s -> Skip (InterleaveSecondOnly s)
+            Stop -> Stop
+
+{-# INLINE_NORMAL interleaveMin #-}
+interleaveMin :: Monad m => Stream m a -> Stream m a -> Stream m a
+interleaveMin (Stream step1 state1) (Stream step2 state2) =
+    Stream step (InterleaveFirst state1 state2)
+
+    where
+
+    -- XXX yield thru a single state? inspection testing
+    {-# INLINE_LATE step #-}
+    step gst (InterleaveFirst st1 st2) = do
+        r <- step1 gst st1
+        return $ case r of
+            Yield a s -> Yield a (InterleaveSecond s st2)
+            Skip s -> Skip (InterleaveFirst s st2)
+            Stop -> Stop
+
+    step gst (InterleaveSecond st1 st2) = do
+        r <- step2 gst st2
+        return $ case r of
+            Yield a s -> Yield a (InterleaveFirst st1 s)
+            Skip s -> Skip (InterleaveSecond st1 s)
+            Stop -> Stop
+
+    step _ (InterleaveFirstOnly _) =  undefined
+    step _ (InterleaveSecondOnly _) =  undefined
+
+{-# INLINE_NORMAL interleaveFst #-}
+interleaveFst :: Monad m => Stream m a -> Stream m a -> Stream m a
+interleaveFst (Stream step1 state1) (Stream step2 state2) =
+    Stream step (InterleaveFirst state1 state2)
+
+    where
+
+    -- XXX yield thru a single state? inspection testing
+    {-# INLINE_LATE step #-}
+    step gst (InterleaveFirst st1 st2) = do
+        r <- step1 gst st1
+        return $ case r of
+            Yield a s -> Yield a (InterleaveSecond s st2)
+            Skip s -> Skip (InterleaveFirst s st2)
+            Stop -> Stop
+
+    step gst (InterleaveSecond st1 st2) = do
+        r <- step2 gst st2
+        return $ case r of
+            Yield a s -> Yield a (InterleaveFirst st1 s)
+            Skip s -> Skip (InterleaveSecond st1 s)
+            Stop -> Skip (InterleaveFirstOnly st1)
+
+    step gst (InterleaveFirstOnly st1) = do
+        r <- step1 gst st1
+        return $ case r of
+            Yield a s -> Yield a (InterleaveFirstOnly s)
+            Skip s -> Skip (InterleaveFirstOnly s)
+            Stop -> Stop
+
+    step _ (InterleaveSecondOnly _) =  undefined
+
+{-# INLINE_NORMAL roundRobin #-}
+roundRobin :: Monad m => Stream m a -> Stream m a -> Stream m a
+roundRobin (Stream step1 state1) (Stream step2 state2) =
+    Stream step (InterleaveFirst state1 state2)
+
+    where
+
+    -- XXX yield thru a single state? inspection testing
+    {-# INLINE_LATE step #-}
+    step gst (InterleaveFirst st1 st2) = do
+        r <- step1 gst st1
+        return $ case r of
+            Yield a s -> Yield a (InterleaveSecond s st2)
+            Skip s -> Skip (InterleaveSecond s st2)
+            Stop -> Skip (InterleaveSecondOnly st2)
+
+    step gst (InterleaveSecond st1 st2) = do
+        r <- step2 gst st2
+        return $ case r of
+            Yield a s -> Yield a (InterleaveFirst st1 s)
+            Skip s -> Skip (InterleaveFirst st1 s)
+            Stop -> Skip (InterleaveFirstOnly st1)
+
+    step gst (InterleaveSecondOnly st2) = do
+        r <- step2 gst st2
+        return $ case r of
+            Yield a s -> Yield a (InterleaveSecondOnly s)
+            Skip s -> Skip (InterleaveSecondOnly s)
+            Stop -> Stop
+
+    step gst (InterleaveFirstOnly st1) = do
+        r <- step1 gst st1
+        return $ case r of
+            Yield a s -> Yield a (InterleaveFirstOnly s)
+            Skip s -> Skip (InterleaveFirstOnly s)
+            Stop -> Stop
 
 ------------------------------------------------------------------------------
 -- Exceptions

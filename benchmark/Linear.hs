@@ -153,6 +153,7 @@ main =
         , benchIOSrc serially "foldMapWith" Ops.sourceFoldMapWith
         , benchIOSrc serially "foldMapWithM" Ops.sourceFoldMapWithM
         , benchIOSrc serially "foldMapM" Ops.sourceFoldMapM
+        -- , benchIOSrc serially "concatMap" Ops.sourceConcatMap
         ]
       , bgroup "elimination"
         [ bgroup "reduce"
@@ -358,6 +359,11 @@ main =
         , benchIOSrc1 "concatMapPure1xN" Ops.concatMapPure1xN
         , benchIOSrc1 "concatMapNxN" Ops.concatMapNxN
         , benchIOSrc1 "concatMapRepl4xN" Ops.concatMapRepl4xN
+        , benchIOSrc1 "serial2" Ops.serial2
+        , benchIOSrc1 "append2" Ops.append2
+        , benchIOSrc1 "wSerial2" Ops.wSerial2
+        , benchIOSrc1 "interleave2" Ops.interleave2
+        , benchIOSrc1 "roundRobin2" Ops.roundRobin2
         ]
     -- scanl-map and foldl-map are equivalent to the scan and fold in the foldl
     -- library. If scan/fold followed by a map is efficient enough we may not

@@ -69,6 +69,11 @@ module Streamly.Prelude.Internal
     , foldrS
     , foldrT
     , foldr
+    , append
+    , interleave
+    , interleaveFst
+    , interleaveMin
+    , roundRobin
 
     -- ** Left Folds
     , foldl'
@@ -205,7 +210,7 @@ module Streamly.Prelude.Internal
     , intersperse
     , insertAfterEach
     -- , intersperseBySpan
-    , intersperseByTime
+    , interject -- interject?
 
     -- ** Reordering
     , reverse
@@ -1817,16 +1822,16 @@ intersperseBySpan _n _f _xs = undefined
 -- seconds.
 --
 -- @
--- > S.drain $ S.intersperseByTime 1 (putChar ',') $ S.mapM (\\x -> threadDelay 1000000 >> putChar x) $ S.fromList "hello"
+-- > S.drain $ S.interject 1 (putChar ',') $ S.mapM (\\x -> threadDelay 1000000 >> putChar x) $ S.fromList "hello"
 -- "h,e,l,l,o"
 -- @
 --
 -- @since 0.7.0
-{-# INLINE intersperseByTime #-}
-intersperseByTime
+{-# INLINE interject #-}
+interject
     :: (IsStream t, MonadAsync m)
     => Double -> m a -> t m a -> t m a
-intersperseByTime n f xs = xs `Par.parallelEndByFirst` repeatM timed
+interject n f xs = xs `Par.parallelFst` repeatM timed
     where timed = liftIO (threadDelay (round $ n * 1000000)) >> f
 
 -- | @insertBy cmp elem stream@ inserts @elem@ before the first element in
@@ -2092,6 +2097,26 @@ concatMapWith = K.concatMapBy
 concatMap ::(IsStream t, Monad m) => (a -> t m b) -> t m a -> t m b
 concatMap f m = fromStreamD $ D.concatMap (toStreamD . f) (toStreamD m)
 
+{-# INLINE append #-}
+append ::(IsStream t, Monad m) => t m b -> t m b -> t m b
+append m1 m2 = fromStreamD $ D.append (toStreamD m1) (toStreamD m2)
+
+{-# INLINE interleave #-}
+interleave ::(IsStream t, Monad m) => t m b -> t m b -> t m b
+interleave m1 m2 = fromStreamD $ D.interleave (toStreamD m1) (toStreamD m2)
+
+{-# INLINE interleaveFst #-}
+interleaveFst ::(IsStream t, Monad m) => t m b -> t m b -> t m b
+interleaveFst m1 m2 = fromStreamD $ D.interleaveFst (toStreamD m1) (toStreamD m2)
+
+{-# INLINE interleaveMin #-}
+interleaveMin ::(IsStream t, Monad m) => t m b -> t m b -> t m b
+interleaveMin m1 m2 = fromStreamD $ D.interleaveMin (toStreamD m1) (toStreamD m2)
+
+{-# INLINE roundRobin #-}
+roundRobin ::(IsStream t, Monad m) => t m b -> t m b -> t m b
+roundRobin m1 m2 = fromStreamD $ D.roundRobin (toStreamD m1) (toStreamD m2)
+
 -- | Map a stream producing monadic function on each element of the stream
 -- and then flatten the results into a single stream. Since the stream
 -- generation function is monadic, unlike 'concatMap', it can produce an
@@ -2276,7 +2301,7 @@ intervalsOf
     => Double -> Fold m a b -> t m a -> t m b
 intervalsOf n f xs =
     splitWithSuffix isNothing (FL.lcatMaybes f)
-        (intersperseByTime n (return Nothing) (Serial.map Just xs))
+        (interject n (return Nothing) (Serial.map Just xs))
 
 ------------------------------------------------------------------------------
 -- Element Aware APIs
