@@ -40,9 +40,9 @@ module Streamly.Internal
     , interleave
     , interleaveFst
     , interleaveMin
+    , roundrobin
     , wSerialFst
     , wSerialMin
-    , roundRobin
     , parallelFst
     , parallelMin
 
@@ -64,6 +64,8 @@ module Streamly.Internal
     , classifyKeepAliveSessions
 
     , concatMapU
+    , concatUnfoldInterleave
+    , concatUnfoldRoundrobin
 
     -- * Streamly.Fold Experimental Exports
     , Fold (..)

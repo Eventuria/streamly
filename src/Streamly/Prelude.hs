@@ -65,7 +65,7 @@ module Streamly.Prelude
     , yield
     , append
     , interleave
-    , roundRobin
+    , roundrobin
     , yieldM
     , repeat
     , repeatM

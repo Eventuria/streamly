@@ -73,7 +73,7 @@ module Streamly.Prelude.Internal
     , interleave
     , interleaveFst
     , interleaveMin
-    , roundRobin
+    , roundrobin
 
     -- ** Left Folds
     , foldl'
@@ -237,6 +237,8 @@ module Streamly.Prelude.Internal
     -- ** Nested Streams
     , concatMapM
     , concatMapU
+    , concatUnfoldInterleave
+    , concatUnfoldRoundrobin
     , concatMap
     , concatMapWith
     -- , interposeBy
@@ -2097,25 +2099,57 @@ concatMapWith = K.concatMapBy
 concatMap ::(IsStream t, Monad m) => (a -> t m b) -> t m a -> t m b
 concatMap f m = fromStreamD $ D.concatMap (toStreamD . f) (toStreamD m)
 
+-- | Append the outputs of two streams, yielding all the elements from the
+-- first stream and then yielding all the elements from the second stream.
+--
+-- @since 0.7.0
 {-# INLINE append #-}
 append ::(IsStream t, Monad m) => t m b -> t m b -> t m b
 append m1 m2 = fromStreamD $ D.append (toStreamD m1) (toStreamD m2)
 
+-- Same as 'wSerial'. We should perhaps rename wSerial. If named explicitly
+-- this would be interleaveMax.
+--
+-- | Interleaves the outputs of two streams, yielding elements from each stream
+-- alternately, starting from the first stream. If any of the streams finishes
+-- early the other stream continues alone until it too finishes.
+--
+-- @since 0.7.0
 {-# INLINE interleave #-}
 interleave ::(IsStream t, Monad m) => t m b -> t m b -> t m b
 interleave m1 m2 = fromStreamD $ D.interleave (toStreamD m1) (toStreamD m2)
 
+-- | Interleaves the outputs of two streams, yielding elements from each stream
+-- alternately, starting from the first stream. As soon as the first stream
+-- finishes the output stops discarding the second stream.
+--
+-- @since 0.7.0
 {-# INLINE interleaveFst #-}
 interleaveFst ::(IsStream t, Monad m) => t m b -> t m b -> t m b
 interleaveFst m1 m2 = fromStreamD $ D.interleaveFst (toStreamD m1) (toStreamD m2)
 
+-- | Interleaves the outputs of two streams, yielding elements from each stream
+-- alternately, starting from the first stream. The output stops as soon as any
+-- of the two streams finishes discarding the other.
+--
+-- @since 0.7.0
 {-# INLINE interleaveMin #-}
 interleaveMin ::(IsStream t, Monad m) => t m b -> t m b -> t m b
 interleaveMin m1 m2 = fromStreamD $ D.interleaveMin (toStreamD m1) (toStreamD m2)
 
-{-# INLINE roundRobin #-}
-roundRobin ::(IsStream t, Monad m) => t m b -> t m b -> t m b
-roundRobin m1 m2 = fromStreamD $ D.roundRobin (toStreamD m1) (toStreamD m2)
+-- | Schedule the execution of two streams in a fair round-robin manner,
+-- executing each stream once, alternately. Execution of a stream may not
+-- necessarily result in an output, a stream may chose to @Skip@ producing an
+-- element until later giving the other stream a chance to run. Therefore, this
+-- combinator fairly interleaves the execution of two streams rather than
+-- fairly interleaving the output of the two streams. This can be useful in
+-- co-operative multitasking without using explicit threads. This can be used
+-- as an alternative to `async`.
+--
+-- @since 0.7.0
+{-# INLINE roundrobin #-}
+roundrobin ::(IsStream t, Monad m) => t m b -> t m b -> t m b
+roundrobin m1 m2 = fromStreamD $ D.roundRobin (toStreamD m1) (toStreamD m2)
 
 -- | Map a stream producing monadic function on each element of the stream
 -- and then flatten the results into a single stream. Since the stream
@@ -2135,6 +2169,26 @@ concatMapM f m = fromStreamD $ D.concatMapM (fmap toStreamD . f) (toStreamD m)
 {-# INLINE concatMapU #-}
 concatMapU ::(IsStream t, Monad m) => Unfold m a b -> t m a -> t m b
 concatMapU u m = fromStreamD $ D.concatMapU u (toStreamD m)
+
+-- | Like 'concatUnfold' but interleaves the streams in the same way as
+-- 'interleave' behaves instead of appending them.
+--
+-- @since 0.7.0
+{-# INLINE concatUnfoldInterleave #-}
+concatUnfoldInterleave ::(IsStream t, Monad m)
+    => Unfold m a b -> t m a -> t m b
+concatUnfoldInterleave u m =
+    fromStreamD $ D.concatUnfoldInterleave u (toStreamD m)
+
+-- | Like 'concatUnfold' but executes the streams in the same way as
+-- 'roundrobin'.
+--
+-- @since 0.7.0
+{-# INLINE concatUnfoldRoundrobin #-}
+concatUnfoldRoundrobin ::(IsStream t, Monad m)
+    => Unfold m a b -> t m a -> t m b
+concatUnfoldRoundrobin u m =
+    fromStreamD $ D.concatUnfoldRoundrobin u (toStreamD m)
 
 {-
 -- | A generalization of insertBy to inserting sequences.

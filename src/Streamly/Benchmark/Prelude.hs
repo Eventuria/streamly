@@ -41,11 +41,15 @@ import qualified GHC.Exts as GHC
 import Streamly.Streams.StreamD.Type (Step(..))
 import Streamly.Streams.StreamD (InterleaveState(..), AppendState(..))
 import Test.Inspection
+
+import qualified Streamly.Streams.StreamD as D
 #endif
 
 import qualified Streamly          as S hiding (foldMapWith, runStream)
 import qualified Streamly.Prelude  as S
 import qualified Streamly.Internal as Internal
+-- import qualified Streamly.Prelude.Internal as Internal
+import qualified Streamly.Unfold as UF
 -- import qualified Streamly.Pipe  as Pipe
 
 value, maxValue, value2 :: Int
@@ -669,6 +673,40 @@ concatMapRepl4xN n = S.drain $ S.concatMap (S.replicate 4)
 inspect $ hasNoTypeClasses 'concatMapRepl4xN
 #endif
 
+{-# INLINE concatMapURepl4xN #-}
+concatMapURepl4xN :: Int -> IO ()
+concatMapURepl4xN n = S.drain $ Internal.concatMapU (UF.replicateM 4)
+                          (sourceUnfoldrMN (value `div` 4) n)
+
+#ifdef INSPECTION
+inspect $ hasNoTypeClasses 'concatMapURepl4xN
+inspect $ 'concatMapURepl4xN `hasNoType` ''D.ConcatMapUState
+#endif
+
+{-# INLINE concatUnfoldInterleaveRepl4xN #-}
+concatUnfoldInterleaveRepl4xN :: Int -> IO ()
+concatUnfoldInterleaveRepl4xN n =
+    S.drain $ Internal.concatUnfoldInterleave
+        (UF.replicateM 4)
+        (sourceUnfoldrMN (value `div` 4) n)
+
+#ifdef INSPECTION
+inspect $ hasNoTypeClasses 'concatUnfoldInterleaveRepl4xN
+-- inspect $ 'concatUnfoldInterleaveRepl4xN `hasNoType` ''D.ConcatUnfoldInterleaveState
+#endif
+
+{-# INLINE concatUnfoldRoundrobinRepl4xN #-}
+concatUnfoldRoundrobinRepl4xN :: Int -> IO ()
+concatUnfoldRoundrobinRepl4xN n =
+    S.drain $ Internal.concatUnfoldRoundrobin
+        (UF.replicateM 4)
+        (sourceUnfoldrMN (value `div` 4) n)
+
+#ifdef INSPECTION
+inspect $ hasNoTypeClasses 'concatUnfoldRoundrobinRepl4xN
+-- inspect $ 'concatUnfoldRoundrobinRepl4xN `hasNoType` ''D.ConcatUnfoldInterleaveState
+#endif
+
 {-# INLINE serial2 #-}
 serial2 :: Int -> IO ()
 serial2 n = S.drain $ S.serial (sourceUnfoldrMN (value `div` 2) n)
@@ -681,6 +719,7 @@ append2 n = S.drain $ S.append (sourceUnfoldrMN (value `div` 2) n)
 
 #ifdef INSPECTION
 inspect $ hasNoTypeClasses 'append2
+inspect $ 'append2 `hasNoType` ''AppendState
 #endif
 
 {-# INLINE wSerial2 #-}
@@ -699,7 +738,7 @@ inspect $ 'interleave2 `hasNoType` ''InterleaveState
 
 {-# INLINE roundRobin2 #-}
 roundRobin2 :: Int -> IO ()
-roundRobin2 n = S.drain $ S.roundRobin (sourceUnfoldrMN (value `div` 2) n)
+roundRobin2 n = S.drain $ S.roundrobin (sourceUnfoldrMN (value `div` 2) n)
                                (sourceUnfoldrMN (value `div` 2) (n + 1))
 
 #ifdef INSPECTION

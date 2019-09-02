@@ -359,6 +359,11 @@ main =
         , benchIOSrc1 "concatMapPure1xN" Ops.concatMapPure1xN
         , benchIOSrc1 "concatMapNxN" Ops.concatMapNxN
         , benchIOSrc1 "concatMapRepl4xN" Ops.concatMapRepl4xN
+        , benchIOSrc1 "concatUnfoldRepl4xN" Ops.concatMapURepl4xN
+        , benchIOSrc1 "concatUnfoldInterleaveRepl4xN"
+                Ops.concatUnfoldInterleaveRepl4xN
+        , benchIOSrc1 "concatUnfoldRoundrobinRepl4xN"
+                Ops.concatUnfoldRoundrobinRepl4xN
         , benchIOSrc1 "serial2" Ops.serial2
         , benchIOSrc1 "append2" Ops.append2
         , benchIOSrc1 "wSerial2" Ops.wSerial2
