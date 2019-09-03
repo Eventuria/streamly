@@ -36,16 +36,6 @@ module Streamly.Internal
     , interject
     , reverse'
 
-    , append
-    , interleave
-    , interleaveFst
-    , interleaveMin
-    , roundrobin
-    , wSerialFst
-    , wSerialMin
-    , parallelFst
-    , parallelMin
-
     , splitAt -- spanN
     , span  -- spanWhile
     , break -- breakBefore
@@ -62,6 +52,16 @@ module Streamly.Internal
     , classifySessionsOf
     , classifySessionsBy
     , classifyKeepAliveSessions
+
+    , append
+    , interleave
+    , interleaveFst
+    , interleaveMin
+    , roundrobin
+    , wSerialFst
+    , wSerialMin
+    , parallelFst
+    , parallelMin
 
     , concatMapU
     , concatUnfoldInterleave

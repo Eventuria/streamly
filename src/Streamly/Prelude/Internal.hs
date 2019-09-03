@@ -2102,6 +2102,13 @@ concatMap f m = fromStreamD $ D.concatMap (toStreamD . f) (toStreamD m)
 -- | Append the outputs of two streams, yielding all the elements from the
 -- first stream and then yielding all the elements from the second stream.
 --
+-- IMPORTANT NOTE: This could be 100x faster than @serial/<>@ for appending a
+-- few (say 100) streams because it can fuse via stream fusion. However, it
+-- does not scale for a large number of streams (say 1000s) and becomes
+-- qudartically slow. Therefore use this for custom appending of a few streams
+-- but use 'concatMap' or 'concatMapWith serial' for appending @n@ streams or
+-- infinite containers of streams.
+--
 -- @since 0.7.0
 {-# INLINE append #-}
 append ::(IsStream t, Monad m) => t m b -> t m b -> t m b

@@ -63,9 +63,6 @@ module Streamly.Prelude
     -- ** From Values
     -- | Generate a monadic stream from a seed value or values.
     , yield
-    , append
-    , interleave
-    , roundrobin
     , yieldM
     , repeat
     , repeatM

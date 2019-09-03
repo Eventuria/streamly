@@ -17,22 +17,6 @@
 -- Stability   : experimental
 -- Portability : GHC
 --
--- Streamly internally uses two fundamental stream representations, (1) streams
--- with an open or arbitrary control flow (we call it StreamK), (2) streams
--- with a structured or closed loop control flow (we call it StreamD). The
--- higher level stream types can use any of these representations under the
--- hood and can interconvert between the two. Therefore, the higher level types
--- provide both open and closed control flow composition. The uncons operation
--- is fundamental to an open control flow representation. It provides more
--- flexibility at the cost of efficiency. This can be used where arbitrary
--- manipulation of control flow is needed, for example interworking with other
--- streams or hoisting to other monads. Internally most combinators use a
--- closed loop representation because it provides very high efficiency due to
--- stream fusion. The performance of this representation is competitive to the
--- C language implementations.
---
--- Round-robin scheduling is easy to do in closed loop.
---
 -- Streams forcing a closed control flow loop can be categorized under
 -- two types, unfolds and folds, both of these are duals of each other.
 --
@@ -52,7 +36,7 @@
 -- choose which fold to push to and can also push the same element to multiple
 -- folds. Therefore, folds allow splitting or demultiplexing a stream. On the
 -- other hand, we cannot merge streams using this representation. So really
--- there are stream consumers that reduce the stream to a single value, these
+-- these are stream consumers that reduce the stream to a single value, these
 -- consumers can be composed such that a stream can be split over multiple
 -- consumers.
 
